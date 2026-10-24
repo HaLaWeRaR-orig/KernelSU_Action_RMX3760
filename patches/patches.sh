@@ -126,3 +126,13 @@ if 'allow duplicate exports' not in s:
     open(p, 'w').write(s)
     print('module.c patched: duplicate export bypass')
 PYEOF
+python3 - <<'PYEOF'
+p = 'drivers/soc/sprd/debug/hang_debug/sprd_wdh.c'
+s = open(p).read()
+if 'notifier disabled' not in s:
+    i = s.index('sprd_module_notifier_fn(struct notifier_block *nb,')
+    k = s.index('if (action != MODULE_STATE_LIVE)', i)
+    s = s[:k] + 'return NOTIFY_DONE; /* notifier disabled */\n\t' + s[k:]
+    open(p, 'w').write(s)
+    print('sprd_wdh.c patched: module notifier disabled')
+PYEOF
