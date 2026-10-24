@@ -77,3 +77,16 @@ done
 sed -i '/-warn-stack-size/d' Makefile
 
 echo "-android12-9-g62ff7270b368-ab1905" > localversion
+
+python3 - <<'PYEOF'
+p = 'kernel/module.c'
+s = open(p).read()
+if 'bypass module CRC' not in s:
+    marker = 'static int check_version(const struct load_info *info,'
+    i = s.index(marker)
+    j = s.index('{', i)
+    s = s[:j+1] + '\n\treturn 1; /* bypass module CRC */' + s[j+1:]
+    s = s.replace('} else if (!same_magic(modmagic, vermagic, info->index.vers)) {', '} else if (0) { /* vermagic bypass */')
+    open(p, 'w').write(s)
+    print('module.c patched: CRC + vermagic bypass')
+PYEOF
