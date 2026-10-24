@@ -91,3 +91,27 @@ if 'bypass module CRC' not in s:
     open(p, 'w').write(s)
     print('module.c patched: CRC + vermagic bypass')
 PYEOF
+cat > kernel/cfi_stub.c << 'STUBEOF'
+/* CFI/UBSAN stubs - stock modules are CFI-built; provide the runtime symbols */
+#include <linux/module.h>
+#include <linux/kernel.h>
+
+void __ubsan_handle_cfi_check_fail_abort(void *data, void *ptr, void *vtable)
+{
+	panic("CFI check failed (stub handler) ptr=%p", ptr);
+}
+EXPORT_SYMBOL_GPL(__ubsan_handle_cfi_check_fail_abort);
+
+void __ubsan_handle_cfi_check_fail(void *data, void *ptr, void *vtable)
+{
+	pr_warn("CFI check failed (stub, permissive) ptr=%p\n", ptr);
+}
+EXPORT_SYMBOL_GPL(__ubsan_handle_cfi_check_fail);
+
+void __cfi_slowpath(unsigned long long id, void *ptr, void *diag) { }
+EXPORT_SYMBOL_GPL(__cfi_slowpath);
+
+void __cfi_slowpath_diag(unsigned long long id, void *ptr, void *diag) { }
+EXPORT_SYMBOL_GPL(__cfi_slowpath_diag);
+STUBEOF
+grep -q cfi_stub kernel/Makefile || echo 'obj-y += cfi_stub.o' >> kernel/Makefile
