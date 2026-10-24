@@ -144,3 +144,30 @@ if 'PREL32 disabled' not in s and 'select HAVE_ARCH_PREL32_RELOCATIONS' in s:
     open(p, 'w').write(s)
     print('arch/arm64/Kconfig patched: PREL32 disabled')
 PYEOF
+cat > kernel/dbg_fdt.c << 'DBGEOF'
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+
+static int __init dbg_fdt(void)
+{
+	struct device_node *np;
+	const char *st;
+	int cnt = 0;
+	pr_err("DBGFDT: ===== FDT WALK =====\n");
+	for_each_available_node(np) {
+		cnt++;
+		if (strstr(np->full_name, "201d") || strstr(np->full_name, "sdio") || strstr(np->full_name, "mmc")) {
+			st = of_get_property(np, "status", NULL);
+			pr_err("DBGFDT: node=%s status=%s\n", np->full_name, st ? st : "(none)");
+		}
+	}
+	pr_err("DBGFDT: total nodes=%d\n", cnt);
+	np = of_find_node_by_name(NULL, "201d0000.sdio");
+	pr_err("DBGFDT: find_by_name sdio=%p\n", np);
+	return 0;
+}
+late_initcall(dbg_fdt);
+DBGEOF
+grep -q dbg_fdt kernel/Makefile || echo 'obj-y += dbg_fdt.o' >> kernel/Makefile
