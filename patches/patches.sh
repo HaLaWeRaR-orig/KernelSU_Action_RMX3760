@@ -171,3 +171,11 @@ static int __init dbg_fdt(void)
 late_initcall(dbg_fdt);
 DBGEOF
 grep -q dbg_fdt kernel/Makefile || echo 'obj-y += dbg_fdt.o' >> kernel/Makefile
+
+python3 - <<'PYEOF'
+p = 'kernel/dbg_fdt.c'
+s = open(p).read()
+s = s.replace('for_each_available_node(np) {', 'np = NULL;\n\twhile ((np = of_find_all_nodes(np))) {')
+open(p, 'w').write(s)
+print('dbg_fdt.c fixed: of_find_all_nodes walk')
+PYEOF
