@@ -74,3 +74,4 @@ for i in "${patch_files[@]}"; do
     esac
 
 done
+sed -i '/-warn-stack-size/d' Makefile
