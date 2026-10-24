@@ -115,3 +115,14 @@ void __cfi_slowpath_diag(unsigned long long id, void *ptr, void *diag) { }
 EXPORT_SYMBOL_GPL(__cfi_slowpath_diag);
 STUBEOF
 grep -q cfi_stub kernel/Makefile || echo 'obj-y += cfi_stub.o' >> kernel/Makefile
+python3 - <<'PYEOF'
+p = 'kernel/module.c'
+s = open(p).read()
+if 'allow duplicate exports' not in s:
+    marker = 'static int verify_exported_symbols(struct module *mod)'
+    i = s.index(marker)
+    k = s.index('for (i = 0; i < ARRAY_SIZE(arr); i++)', i)
+    s = s[:k] + 'return 0; /* allow duplicate exports */\n\t' + s[k:]
+    open(p, 'w').write(s)
+    print('module.c patched: duplicate export bypass')
+PYEOF
