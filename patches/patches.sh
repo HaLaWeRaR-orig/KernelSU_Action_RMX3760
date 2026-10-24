@@ -136,3 +136,11 @@ if 'notifier disabled' not in s:
     open(p, 'w').write(s)
     print('sprd_wdh.c patched: module notifier disabled')
 PYEOF
+python3 - <<'PYEOF'
+p = 'arch/arm64/Kconfig'
+s = open(p).read()
+if 'PREL32 disabled' not in s and 'select HAVE_ARCH_PREL32_RELOCATIONS' in s:
+    s = s.replace('select HAVE_ARCH_PREL32_RELOCATIONS', '# PREL32 disabled - match stock module ksymtab format\n\t# select HAVE_ARCH_PREL32_RELOCATIONS')
+    open(p, 'w').write(s)
+    print('arch/arm64/Kconfig patched: PREL32 disabled')
+PYEOF
