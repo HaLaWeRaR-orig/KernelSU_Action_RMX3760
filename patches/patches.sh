@@ -75,3 +75,5 @@ for i in "${patch_files[@]}"; do
 
 done
 sed -i '/-warn-stack-size/d' Makefile
+
+echo "-android12-9-g62ff7270b368-ab1905" > localversion
