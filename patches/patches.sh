@@ -250,3 +250,49 @@ static int __init dbg_fdt(void)
 }
 late_initcall(dbg_fdt);
 DBGEOF
+
+cat > kernel/dbg_fdt.c << 'DBGEOF'
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
+#include <linux/device.h>
+#include <linux/delay.h>
+#include <linux/workqueue.h>
+
+static struct delayed_work dbg_work;
+
+static int drv_cb(struct device_driver *drv, void *data)
+{
+	int *cnt = data;
+	(*cnt)++;
+	if (strstr(drv->name, "sprd") || strstr(drv->name, "sdhci") || strstr(drv->name, "gpio"))
+		pr_err("DBGFDT3: drv on bus: %s\n", drv->name);
+	return 0;
+}
+
+static void dbg_late(struct work_struct *work)
+{
+	struct module *mod;
+	int cnt = 0;
+	pr_err("DBGFDT3: ===== DRIVER/MOD CHECK =====\n");
+	bus_for_each_drv(&platform_bus_type, NULL, &cnt, drv_cb);
+	pr_err("DBGFDT3: platform drivers total=%d\n", cnt);
+	mod = find_module("sdhci_sprd");
+	pr_err("DBGFDT3: mod=%p init_ptr=%p state=%d\n",
+		mod, mod ? mod->init : NULL, mod ? (int)mod->state : -1);
+	mod = find_module("gpio_sprd");
+	pr_err("DBGFDT3: gpio mod=%p init_ptr=%p state=%d\n",
+		mod, mod ? mod->init : NULL, mod ? (int)mod->state : -1);
+}
+
+static int __init dbg_fdt(void)
+{
+	INIT_DELAYED_WORK(&dbg_work, dbg_late);
+	schedule_delayed_work(&dbg_work, msecs_to_jiffies(5000));
+	pr_err("DBGFDT: v3 scheduled\n");
+	return 0;
+}
+late_initcall(dbg_fdt);
+DBGEOF
