@@ -210,3 +210,43 @@ static int __init dbg_fdt(void)
 }
 late_initcall(dbg_fdt);
 DBGEOF
+
+cat > kernel/dbg_fdt.c << 'DBGEOF'
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
+#include <linux/device.h>
+#include <linux/delay.h>
+#include <linux/workqueue.h>
+
+static struct delayed_work dbg_work;
+
+static void dbg_late(struct work_struct *work)
+{
+	struct device *dev;
+	struct device_driver *drv;
+	int ret;
+	pr_err("DBGFDT2: ===== LATE CHECK =====\n");
+	dev = bus_find_device_by_name(&platform_bus_type, NULL, "201d0000.sdio");
+	pr_err("DBGFDT2: pdev=%p bound=%s\n", dev,
+		(dev && dev->driver) ? dev->driver->name : "(none)");
+	drv = driver_find("sdhci_sprd_r11", &platform_bus_type);
+	pr_err("DBGFDT2: driver found=%p\n", drv);
+	if (dev && !dev->driver) {
+		ret = device_attach(dev);
+		pr_err("DBGFDT2: manual device_attach ret=%d bound=%s\n", ret,
+			(dev && dev->driver) ? dev->driver->name : "(none)");
+	}
+}
+
+static int __init dbg_fdt(void)
+{
+	INIT_DELAYED_WORK(&dbg_work, dbg_late);
+	schedule_delayed_work(&dbg_work, msecs_to_jiffies(5000));
+	pr_err("DBGFDT: probe scheduled\n");
+	return 0;
+}
+late_initcall(dbg_fdt);
+DBGEOF
