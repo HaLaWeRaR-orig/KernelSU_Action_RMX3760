@@ -307,3 +307,18 @@ if 'cfi_check layout fix' not in s:
     open(p, 'w').write(s)
     print('module.h patched: cfi_check field unconditional')
 PYEOF
+
+python3 - <<'PYEOF'
+import re as _re
+p = 'include/linux/module.h'
+s = open(p).read()
+if 'cfi_check layout fix' not in s:
+    s2 = _re.sub(r'#ifdef CONFIG_CFI_CLANG[ 	
+]+cfi_check_fn cfi_check;[ 	
+]+#endif', '	void *cfi_check; /* cfi_check layout fix */', s, count=1)
+    if s2 != s:
+        open(p, 'w').write(s2)
+        print('module.h patched: cfi_check unconditional')
+    else:
+        print('module.h: PATTERN NOT FOUND')
+PYEOF
