@@ -296,3 +296,14 @@ static int __init dbg_fdt(void)
 }
 late_initcall(dbg_fdt);
 DBGEOF
+
+python3 - <<'PYEOF'
+p = 'include/linux/module.h'
+s = open(p).read()
+if 'cfi_check layout fix' not in s:
+    s = s.replace('#ifdef CONFIG_CFI_CLANG
+	cfi_check_fn cfi_check;
+#endif', '	void *cfi_check; /* cfi_check layout fix - unconditional to match stock struct module */')
+    open(p, 'w').write(s)
+    print('module.h patched: cfi_check field unconditional')
+PYEOF
