@@ -297,28 +297,8 @@ static int __init dbg_fdt(void)
 late_initcall(dbg_fdt);
 DBGEOF
 
-python3 - <<'PYEOF'
-p = 'include/linux/module.h'
-s = open(p).read()
-if 'cfi_check layout fix' not in s:
-    s = s.replace('#ifdef CONFIG_CFI_CLANG
-	cfi_check_fn cfi_check;
-#endif', '	void *cfi_check; /* cfi_check layout fix - unconditional to match stock struct module */')
-    open(p, 'w').write(s)
-    print('module.h patched: cfi_check field unconditional')
-PYEOF
 
-python3 - <<'PYEOF'
-import re as _re
-p = 'include/linux/module.h'
-s = open(p).read()
-if 'cfi_check layout fix' not in s:
-    s2 = _re.sub(r'#ifdef CONFIG_CFI_CLANG[ 	
-]+cfi_check_fn cfi_check;[ 	
-]+#endif', '	void *cfi_check; /* cfi_check layout fix */', s, count=1)
-    if s2 != s:
-        open(p, 'w').write(s2)
-        print('module.h patched: cfi_check unconditional')
-    else:
-        print('module.h: PATTERN NOT FOUND')
-PYEOF
+# cfi_check layout fix via sed (make struct module field unconditional)
+sed -i '0,/cfi_check_fn cfi_check;/s//void *cfi_check;/' include/linux/module.h
+sed -i '0,/#ifdef CONFIG_CFI_CLANG/s//#if 1/' include/linux/module.h
+echo 'module.h patched: cfi_check field unconditional (layout match stock)'
