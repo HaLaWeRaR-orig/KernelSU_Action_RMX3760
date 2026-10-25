@@ -302,3 +302,14 @@ DBGEOF
 sed -i '0,/cfi_check_fn cfi_check;/s//void *cfi_check;/' include/linux/module.h
 sed -i '0,/#ifdef CONFIG_CFI_CLANG/s//#if 1/' include/linux/module.h
 echo 'module.h patched: cfi_check field unconditional (layout match stock)'
+
+python3 - <<'PYEOF'
+p = 'drivers/soc/sprd/debug/sysdump/last_kmsg.c'
+s = open(p).read()
+if 'persist fix' not in s:
+    old = 'get_last_kmsg(dumper, kmsg_buf, KMSG_BUF_SIZE, why);'
+    new = old + chr(10) + chr(9) + 'save_log_to_partition_handler(NULL, 0, (void *)why); /* persist fix */'
+    s = s.replace(old, new, 1)
+    open(p, 'w').write(s)
+    print('last_kmsg.c patched: panic kmsg persisted to common_rs1_a')
+PYEOF
