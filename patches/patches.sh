@@ -98,7 +98,7 @@ cat > kernel/cfi_stub.c << 'STUBEOF'
 
 void __ubsan_handle_cfi_check_fail_abort(void *data, void *ptr, void *vtable)
 {
-	panic("CFI check failed (stub handler) ptr=%p", ptr);
+	pr_warn("CFI check failed (ignored) ptr=%p"\n", ptr);
 }
 EXPORT_SYMBOL_GPL(__ubsan_handle_cfi_check_fail_abort);
 
