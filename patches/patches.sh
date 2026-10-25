@@ -179,3 +179,34 @@ s = s.replace('for_each_available_node(np) {', 'np = NULL;\n\twhile ((np = of_fi
 open(p, 'w').write(s)
 print('dbg_fdt.c fixed: of_find_all_nodes walk')
 PYEOF
+
+cat > kernel/dbg_fdt.c << 'DBGEOF'
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
+
+static int __init dbg_fdt(void)
+{
+	struct device_node *np;
+	struct platform_device *pdev;
+	const char *st, *cmp;
+	int cnt = 0;
+	pr_err("DBGFDT: ===== FDT WALK v2 =====\n");
+	np = NULL;
+	while ((np = of_find_all_nodes(np))) {
+		cnt++;
+		if (strstr(np->full_name, "sdio")) {
+			st = of_get_property(np, "status", NULL);
+			cmp = of_get_property(np, "compatible", NULL);
+			pdev = of_find_device_by_node(np);
+			pr_err("DBGFDT: node=%s status=%s compat=%s pdev=%p\n",
+				np->full_name, st ? st : "(none)", cmp ? cmp : "(none)", pdev);
+		}
+	}
+	pr_err("DBGFDT: total nodes=%d\n", cnt);
+	return 0;
+}
+late_initcall(dbg_fdt);
+DBGEOF
