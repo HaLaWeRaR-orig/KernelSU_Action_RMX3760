@@ -313,3 +313,75 @@ if 'persist fix' not in s:
     open(p, 'w').write(s)
     print('last_kmsg.c patched: panic kmsg persisted to common_rs1_a')
 PYEOF
+
+cat > kernel/dbg_fdt.c << 'DBGEOF'
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/of.h>
+#include <linux/blkdev.h>
+#include <linux/bio.h>
+#include <linux/kmsg_dump.h>
+#include <linux/delay.h>
+#include <linux/workqueue.h>
+#include <linux/gfp.h>
+#include <linux/mm.h>
+#include <linux/string.h>
+
+static struct delayed_work snap_work;
+static char *snap_buf;
+static int snap_count;
+
+static void snap_write(void)
+{
+	struct block_device *bdev;
+	struct bio bio;
+	struct kmsg_dumper dumper;
+	size_t len = 0;
+	int i, npages;
+	static const char hdr[] = "SNAPSHOT";
+
+	if (!snap_buf)
+		return;
+	memset(snap_buf, 0, 64);
+	memcpy(snap_buf, hdr, sizeof(hdr));
+	dumper.active = true;
+	kmsg_dump_rewind(&dumper);
+	kmsg_dump_get_buffer(&dumper, true, snap_buf + 64, 60 * 1024, &len);
+
+	bdev = blkdev_get_by_dev(MKDEV(259, 62), FMODE_WRITE | FMODE_READ, NULL);
+	if (IS_ERR_OR_NULL(bdev)) {
+		pr_err("SNAP: blkdev_get fail\n");
+		return;
+	}
+	bio_init(&bio);
+	bio_set_dev(&bio, bdev);
+	bio.bi_iter.bi_sector = 0;
+	bio.bi_opf = REQ_OP_WRITE | REQ_SYNC;
+	npages = (64 + 60 * 1024) / PAGE_SIZE;
+	for (i = 0; i < npages; i++)
+		bio_add_page(&bio, virt_to_page(snap_buf + i * PAGE_SIZE), PAGE_SIZE, i * PAGE_SIZE);
+	submit_bio_wait(&bio);
+	blkdev_put(bdev, FMODE_WRITE);
+	pr_err("SNAP: wrote kmsg len=%d call=%d\n", (int)len, snap_count);
+}
+
+static void snap_tick(struct work_struct *work)
+{
+	snap_count++;
+	snap_write();
+	if (snap_count < 30)
+		schedule_delayed_work(&snap_work, msecs_to_jiffies(2000));
+}
+
+static int __init dbg_fdt(void)
+{
+	snap_buf = (char *)__get_free_pages(GFP_KERNEL | __GFP_ZERO, 5);
+	if (!snap_buf)
+		return -ENOMEM;
+	INIT_DELAYED_WORK(&snap_work, snap_tick);
+	schedule_delayed_work(&snap_work, msecs_to_jiffies(3000));
+	pr_err("SNAP: snapshotter scheduled\n");
+	return 0;
+}
+late_initcall(dbg_fdt);
+DBGEOF
